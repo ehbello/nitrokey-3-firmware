@@ -17,6 +17,7 @@ pub fn msp() -> u32 {
 #[rtic::app(device = lpc55_hal::raw, peripherals = true, dispatchers = [PLU, PIN_INT5, PIN_INT7])]
 mod app {
     use apdu_dispatch::dispatch::ApduDispatch;
+    #[cfg(feature = "board-nk3xn")]
     use boards::{
         init::UsbClasses,
         nk3xn::{nfc::NfcChip, NK3xN},
@@ -24,8 +25,19 @@ mod app {
         soc::lpc55::{self, monotonic::SystickMonotonic},
         Apps, Trussed,
     };
+    #[cfg(feature = "board-solo2")]
+    use boards::{
+        init::UsbClasses,
+        solo2::{nfc::NfcChip, SOLO2},
+        runtime,
+        soc::lpc55::{self, monotonic::SystickMonotonic},
+        Apps, Trussed,
+    };
     use ctaphid_dispatch::dispatch::Dispatch as CtaphidDispatch;
+    #[cfg(feature = "board-nk3xn")]
     use embedded_runner_lib::nk3xn;
+    #[cfg(feature = "board-solo2")]
+    use embedded_runner_lib::solo2;
     use lpc55_hal::{
         drivers::timer::Elapsed,
         raw::Interrupt,
@@ -35,7 +47,11 @@ mod app {
     use nfc_device::Iso14443;
     use systick_monotonic::Systick;
 
+    #[cfg(feature = "board-nk3xn")]
     type Board = NK3xN;
+    #[cfg(feature = "board-solo2")]
+    type Board = SOLO2;
+
     type Soc = <Board as boards::Board>::Soc;
 
     const REFRESH_MILLISECS: Milliseconds = Milliseconds(50);
@@ -84,7 +100,7 @@ mod app {
         /// timing. It seems like RTIC v6 will allow using such a timer directly.
         ///
         /// Alternatively, we could send wait extensions as if always running at 12MHz,
-        /// which would cause more context switching and NFC exchangs though.
+        /// which would cause more context switching and NFC exchanges though.
         ///
         /// NB: CCID + CTAPHID also have a sort of "wait extension" implemented, however
         /// since the system runs at constant speed when powered over USB, there is no
@@ -104,6 +120,7 @@ mod app {
         #[cfg(feature = "alloc")]
         embedded_runner_lib::init_alloc();
 
+        #[cfg(feature = "board-nk3xn")]
         let nk3xn::init::All {
             basic,
             usb_nfc,
@@ -111,6 +128,16 @@ mod app {
             apps,
             clock_controller,
         } = nk3xn::init(c.device, c.core);
+
+        #[cfg(feature = "board-solo2")]
+        let solo2::init::All {
+            basic,
+            usb_nfc,
+            trussed,
+            apps,
+            clock_controller,
+        } = solo2::init(c.device, c.core);
+
         let perf_timer = basic.perf_timer;
         let wait_extender = basic.delay_timer;
 
@@ -343,10 +370,16 @@ mod app {
 #[inline(never)]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    boards::handle_panic::<boards::nk3xn::NK3xN>(info)
+    #[cfg(feature = "board-nk3xn")]
+    boards::handle_panic::<boards::nk3xn::NK3xN>(info);
+    #[cfg(feature = "board-solo2")]
+    boards::handle_panic::<boards::solo2::SOLO2>(info);
 }
 
 #[exception]
 unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
-    boards::handle_hard_fault::<boards::nk3xn::NK3xN>(ef)
+    #[cfg(feature = "board-nk3xn")]
+    boards::handle_hard_fault::<boards::nk3xn::NK3xN>(ef);
+    #[cfg(feature = "board-solo2")]
+    boards::handle_hard_fault::<boards::solo2::SOLO2>(ef);
 }

@@ -3,6 +3,7 @@
 use core::ops::Range;
 
 const NRF52_MEMORY: Range<usize> = 0x1_000..0xEC_000;
+const SOLO2_MEMORY: Range<usize> = 0..0x9D_800;
 
 pub struct MemoryRegions {
     pub firmware: Range<usize>,
@@ -18,6 +19,8 @@ impl MemoryRegions {
     pub const NK3AM: Self = Self::split(NRF52_MEMORY, 0xD8_000);
 
     pub const NKPK: Self = Self::split(NRF52_MEMORY, 0xB8_000);
+
+    pub const SOLO2: Self = Self::split(SOLO2_MEMORY, 0x80_000);
 
     pub const fn split(region: Range<usize>, boundary: usize) -> Self {
         Self {

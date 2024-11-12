@@ -18,6 +18,8 @@ pub mod nk3am;
 pub mod nk3xn;
 #[cfg(feature = "board-nkpk")]
 pub mod nkpk;
+#[cfg(feature = "board-solo2")]
+pub mod solo2;
 
 use core::marker::PhantomData;
 

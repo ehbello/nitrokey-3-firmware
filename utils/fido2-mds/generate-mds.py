@@ -157,6 +157,13 @@ NK3XN = Authenticator(
     attestation_root_certificate="attestation/nk3xn.der",
 )
 
+SOLO2 = Authenticator(
+    name="Solokeys Solo2",
+    aaguid="ec99db19-cd1f-4c06-a2a9-940f17a6a30b",
+    has_nfc=True,
+    attestation_root_certificate="attestation/solo2.der",
+)
+
 NK3AM_TEST = Authenticator(
     name="Nitrokey 3 AM Test",
     aaguid="8bc54968-07b1-4d5f-b249-607f5d527da2",
@@ -173,9 +180,16 @@ NK3XN_TEST = Authenticator(
     is_test=True,
 )
 
+SOLO2_TEST = Authenticator(
+    name="Solokeys Solo2",
+    aaguid="8bc54968-07b1-4d5f-b249-607f5d527da2",
+    has_nfc=True,
+    attestation_root_certificate="attestation/test.der",
+    is_test=True,
+)
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("model", choices=["nk3am", "nk3xn"])
+    parser.add_argument("model", choices=["nk3am", "nk3xn", "solo2"])
     parser.add_argument("--test", action="store_true")
     args = parser.parse_args()
 
@@ -190,6 +204,11 @@ if __name__ == "__main__":
             authenticator = NK3XN_TEST
         else:
             authenticator = NK3XN
+    elif model == "solo2":
+        if args.test:
+            authenticator = SOLO2_TEST
+        else:
+            authenticator = SOLO2
     else:
         raise ValueError(f"Unknown model {model}")
 

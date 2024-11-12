@@ -1,4 +1,3 @@
-
 CARGO_TARGET_DIR ?= ../../target
 
 ifeq ($(BOARD), nk3am)
@@ -6,6 +5,10 @@ ifeq ($(BOARD), nk3am)
   TARGET := thumbv7em-none-eabihf
   LEGACY_BUILD_PROFILE := nrf52-bootloader
 else ifeq ($(BOARD), nk3xn)
+  SOC := lpc55
+  TARGET := thumbv8m.main-none-eabi
+  LEGACY_BUILD_PROFILE := lpc55
+else ifeq ($(BOARD), solo2)
   SOC := lpc55
   TARGET := thumbv8m.main-none-eabi
   LEGACY_BUILD_PROFILE := lpc55
@@ -48,11 +51,11 @@ BUILD_FEATURES := board-$(BOARD),$(FEATURES),$(NO_DELOG_FEATURE),$(LITTLEFS_INTR
 # default target -> just build all "shortcuts"
 all: build-all $(ARTIFACTS)
 
-build-all: build-nk3am.bl build-nk3xn
+build-all: build-nk3am.bl build-nk3xn build-solo2
 
-check-all: check-nk3am.bl check-nk3xn
+check-all: check-nk3am.bl check-nk3xn check-solo2
 
-lint-all: lint-nk3am.bl lint-nk3xn
+lint-all: lint-nk3am.bl lint-nk3xn lint-solo2
 
 $(ARTIFACTS):
 	mkdir -p $@
@@ -78,6 +81,8 @@ GET_TARGET = $(shell echo $(@) | cut -d '-' -f 1)
 	$(MAKE) $(GET_TARGET) BOARD=nk3am FEATURES=$(FEATURES)
 %-nk3xn: $(ARTIFACTS)
 	$(MAKE) $(GET_TARGET) BOARD=nk3xn FEATURES=$(FEATURES)
+%-solo2: $(ARTIFACTS)
+	$(MAKE) $(GET_TARGET) BOARD=solo2 FEATURES=$(FEATURES)
 
 check-var-%:
 	@if [ -z '${${*}}' ]; then echo 'FAIL: var: $* required!!!' && exit 1; fi
@@ -92,8 +97,8 @@ check-var-%:
 
 list:
 	@echo "Available:"
-	@echo "  BOARD(s): nk3xn, nk3am"
-	@echo "  Makefile shortcuts: nk3xn, nk3am.bl"
+	@echo "  BOARD(s): nk3xn, nk3am, solo2"
+	@echo "  Makefile shortcuts: nk3xn, nk3am.bl, solo2"
 	@echo ""
 	@echo "  Usage: make <target>-<something> e.g., build-nk3am.bl, reset-nk3xn, ..." 
 
