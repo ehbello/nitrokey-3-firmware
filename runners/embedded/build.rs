@@ -7,6 +7,8 @@ use memory_regions::MemoryRegions;
 const MEMORY_REGIONS: &MemoryRegions = &MemoryRegions::NK3XN;
 #[cfg(feature = "board-nk3am")]
 const MEMORY_REGIONS: &MemoryRegions = &MemoryRegions::NK3AM;
+#[cfg(feature = "board-solo2")]
+const MEMORY_REGIONS: &MemoryRegions = &MemoryRegions::SOLO2;
 
 #[derive(Eq, PartialEq)]
 enum SocType {

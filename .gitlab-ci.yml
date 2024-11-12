@@ -1,4 +1,3 @@
-
 include:
   - project: 'nitrokey/gitlab-ci'
     file:
@@ -89,6 +88,9 @@ build-nightly:
     - make -C runners/embedded build-nk3xn
     - make -C runners/embedded build-nk3xn FEATURES=test
     - make -C runners/embedded build-nk3xn FEATURES=provisioner
+    - make -C runners/embedded build-solo2
+    - make -C runners/embedded build-solo2 FEATURES=test
+    - make -C runners/embedded build-solo2 FEATURES=provisioner
     - cargo build --release --manifest-path runners/usbip/Cargo.toml
     - cargo build --release --manifest-path runners/usbip/Cargo.toml --features test
     - cargo build --release --manifest-path runners/usbip/Cargo.toml --features provisioner
@@ -113,6 +115,10 @@ build-release-firmware:
     - cp runners/embedded/artifacts/runner-lpc55-nk3xn.bin artifacts/firmware-nk3xn-lpc55-$VERSION.bin
     - make -C runners/embedded build-nk3xn FEATURES=provisioner
     - cp runners/embedded/artifacts/runner-lpc55-nk3xn.bin artifacts/provisioner-nk3xn-lpc55-$VERSION.bin
+    - make -C runners/embedded build-solo2
+    - cp runners/embedded/artifacts/runner-solo2.bin artifacts/firmware-solo2-$VERSION.bin
+    - make -C runners/embedded build-solo2 FEATURES=provisioner
+    - cp runners/embedded/artifacts/runner-solo2.bin artifacts/provisioner-solo2-$VERSION.bin
   artifacts:
     paths:
       - artifacts
@@ -129,7 +135,7 @@ build-usbip:
     - export VERSION=`git describe --exact-match`
     - if echo $VERSION | grep test ; then export FEATURES=test ; fi
     - mkdir -p artifacts
-    - cargo build --release --manifest-path runners/usbip/Cargo.toml --features $FEATURES,
+    - cargo build --release --manifest-path runners/usbip/Cargo.toml --features $FEATURES
     - cp target/release/usbip-runner artifacts/usbip-runner-$VERSION
     - cargo build --release --manifest-path runners/usbip/Cargo.toml --features provisioner
     - cp target/release/usbip-runner artifacts/usbip-provisioner-$VERSION
@@ -161,6 +167,10 @@ build-firmware:
     - cp runners/nkpk/artifacts/runner-nkpk.bin.ihex artifacts/firmware-nkpk.hex
     - make -C runners/nkpk build FEATURES=provisioner,no-buttons
     - cp runners/nkpk/artifacts/runner-nkpk.bin.ihex artifacts/provisioner-nkpk.hex
+    - make -C runners/embedded build-solo2 FEATURES=no-buttons
+    - cp runners/embedded/artifacts/runner-solo2.bin artifacts/firmware-solo2.bin
+    - make -C runners/embedded build-solo2 FEATURES=provisioner,no-buttons
+    - cp runners/embedded/artifacts/runner-solo2.bin artifacts/provisioner-solo2.bin
   artifacts:
     paths:
       - artifacts
@@ -206,7 +216,7 @@ hardware-tests:
     - nk3-hw
   parallel:
     matrix:
-      - MODEL: [ nrf52, lpc55, nkpk ]
+      - MODEL: [ nrf52, lpc55, nkpk, solo2 ]
   stage: test
   script:
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@git.nitrokey.com/nitrokey/nitrokey-hardware-test.git --recursive --branch v1.2.5
