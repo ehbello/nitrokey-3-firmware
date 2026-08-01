@@ -15,6 +15,7 @@ embedded-hal = "0.2.3"
 embedded-time = "0.12"
 generic-array = "0.14"
 interchange = "0.3"
+libm = { version = "0.2", optional = true }
 littlefs2 = { version = "=0.8.0", features = ["c-stubs", "unstable-littlefs-patched"] }
 littlefs2-sys = "=0.4.0"
 memory-regions = { path = "../memory-regions" }
@@ -64,7 +65,7 @@ board-nk3am = ["soc-nrf52", "lfs-backup", "se05x/embedded-hal-v0.2.7"]
 board-nk3xn = ["soc-lpc55", "fm11nc08", "utils/storage", "se05x/embedded-hal-v0.2.7"]
 # SoloKeys Solo2: reuses the LPC55 (nk3xn) board but with capacitive touch
 # buttons and without the SE050 secure element (no `se050`, no `se05x`).
-board-solo2 = ["soc-lpc55", "fm11nc08", "utils/storage"]
+board-solo2 = ["soc-lpc55", "fm11nc08", "utils/storage", "dep:libm"]
 board-nkpk = ["board-nk3am", "utils/storage"]
 
 soc-lpc55 = ["lpc55-hal", "lpc55-pac", "se05x?/lpc55-v0.6", "systick-monotonic"]

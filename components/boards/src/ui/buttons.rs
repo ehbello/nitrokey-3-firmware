@@ -27,6 +27,13 @@ pub struct State {
 
 pub trait UserPresence {
     fn check_user_presence(&mut self) -> consent::Level;
+
+    /// Whether a button/touch is being held right now, for a live LED indicator
+    /// independent of any software presence request. Defaults to `false` for
+    /// boards that do not surface a live state.
+    fn is_touched(&mut self) -> bool {
+        false
+    }
 }
 
 /// Implement on triple of buttons.

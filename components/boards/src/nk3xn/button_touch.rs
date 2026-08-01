@@ -179,4 +179,8 @@ impl UserPresence for SoloThreeTouchButtons<ButtonTopPin, ButtonBotPin, ButtonMi
             consent::Level::None
         }
     }
+
+    fn is_touched(&mut self) -> bool {
+        self.is_pressed(Button::A) || self.is_pressed(Button::B) || self.is_pressed(Button::Middle)
+    }
 }

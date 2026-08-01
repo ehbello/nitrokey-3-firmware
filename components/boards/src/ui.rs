@@ -33,6 +33,19 @@ const WHITE: Intensities = Intensities {
     green: u8::MAX,
     blue: u8::MAX,
 };
+// solokeys/solo2 idle/user-presence colours, used only by the Solo2 LED mapping.
+#[cfg(feature = "board-solo2")]
+const GREEN: Intensities = Intensities {
+    red: 0,
+    green: 0x3f,
+    blue: 0,
+};
+#[cfg(feature = "board-solo2")]
+const BLUE: Intensities = Intensities {
+    red: 0,
+    green: 0,
+    blue: 0x7f,
+};
 
 static WAITING: AtomicBool = AtomicBool::new(false);
 
@@ -81,6 +94,18 @@ impl<C: Clock, P: UserPresence, L: RgbLed> UserInterface<C, P, L> {
     fn refresh_ui(&mut self, uptime: Duration) {
         if let Some(rgb) = &mut self.rgb {
             self.status.refresh(uptime);
+            // Solo2: a live touch turns the LED blue, matching the solokeys
+            // firmware, regardless of whether software is requesting presence.
+            #[cfg(feature = "board-solo2")]
+            {
+                if let Some(buttons) = self.buttons.as_mut() {
+                    if buttons.is_touched() {
+                        let blue = LedMode::breathing(BLUE, Duration::from_secs(10), 4, 75);
+                        rgb.set(blue.color(uptime));
+                        return;
+                    }
+                }
+            }
             let mode = self.status.led_mode(self.provisioner);
             rgb.set(mode.color(uptime));
         }
@@ -199,6 +224,18 @@ impl Status {
     }
 
     pub fn led_mode(&self, is_provisioner: bool) -> LedMode {
+        #[cfg(feature = "board-solo2")]
+        {
+            self.led_mode_solo2(is_provisioner)
+        }
+        #[cfg(not(feature = "board-solo2"))]
+        {
+            self.led_mode_default(is_provisioner)
+        }
+    }
+
+    #[cfg(not(feature = "board-solo2"))]
+    fn led_mode_default(&self, is_provisioner: bool) -> LedMode {
         match self {
             Self::Startup(_) => LedMode::constant(WHITE),
             Self::Idle => {
@@ -212,6 +249,38 @@ impl Status {
             Self::WaitingForUserPresence(start) => LedMode::simple_blinking(WHITE, *start),
             Self::Error => LedMode::constant(RED),
             Self::Winking(range) => LedMode::simple_blinking(WHITE, range.start),
+            Self::Custom { status, start } => status.led_mode(*start),
+        }
+    }
+
+    // The solokeys/solo2 firmware shows a slow green idle heartbeat and a blue
+    // user-presence indicator; mirror that feel on the Solo2 while leaving every
+    // other board on the default mapping above.
+    #[cfg(feature = "board-solo2")]
+    fn led_mode_solo2(&self, is_provisioner: bool) -> LedMode {
+        match self {
+            // Constant green at boot instead of the default white flash, capped
+            // at the idle heartbeat's peak brightness (GREEN scaled by the
+            // breathe's max amplitude, 64/255) so it does not look brighter than
+            // the heartbeat that follows.
+            Self::Startup(_) => LedMode::constant(Intensities {
+                red: 0,
+                green: (GREEN.green as u16 * 64 / 255) as u8,
+                blue: 0,
+            }),
+            Self::Idle => {
+                if is_provisioner {
+                    LedMode::constant(WHITE)
+                } else {
+                    LedMode::breathing(GREEN, Duration::from_secs(10), 4, 64)
+                }
+            }
+            Self::Processing => LedMode::simple_blinking(GREEN, Duration::default()),
+            Self::WaitingForUserPresence(_) => {
+                LedMode::breathing(BLUE, Duration::from_secs(10), 4, 75)
+            }
+            Self::Error => LedMode::constant(RED),
+            Self::Winking(range) => LedMode::simple_blinking(BLUE, range.start),
             Self::Custom { status, start } => status.led_mode(*start),
         }
     }
@@ -251,6 +320,15 @@ pub enum LedMode {
         period: Duration,
         start: Duration,
     },
+    // Brightness ramps min..max..min over `period`, scaling `color` — the
+    // solokeys/solo2 breathing heartbeat. Only the Solo2 mapping uses it.
+    #[cfg(feature = "board-solo2")]
+    Breathing {
+        color: Intensities,
+        period: Duration,
+        min: u8,
+        max: u8,
+    },
 }
 
 impl LedMode {
@@ -276,6 +354,16 @@ impl LedMode {
         Self::blinking(color, BLACK, Duration::from_millis(500), start)
     }
 
+    #[cfg(feature = "board-solo2")]
+    pub fn breathing(color: Intensities, period: Duration, min: u8, max: u8) -> Self {
+        Self::Breathing {
+            color,
+            period,
+            min,
+            max,
+        }
+    }
+
     pub fn color(&self, uptime: Duration) -> Intensities {
         match self {
             Self::Constant { color } => *color,
@@ -291,6 +379,28 @@ impl LedMode {
                     *on_color
                 } else {
                     *off_color
+                }
+            }
+            #[cfg(feature = "board-solo2")]
+            Self::Breathing {
+                color,
+                period,
+                min,
+                max,
+            } => {
+                // Exact port of solokeys `calculate_amplitude`: a |sin| breathing
+                // wave. `period` is the sine-argument period, so the visible
+                // breath cycle is half of it. amp = min + floor(|sin|*(max-min)),
+                // then each channel is scaled by amp/255 (same as solo2's driver).
+                let now = uptime.as_millis() as f32;
+                let period_ms = (period.as_millis() as u32).max(1) as f32;
+                let angle = core::f32::consts::TAU * now / period_ms;
+                let amp = *min + (libm::fabsf(libm::sinf(angle)) * (*max - *min) as f32) as u8;
+                let scale = |c: u8| ((c as u32 * amp as u32) / 255) as u8;
+                Intensities {
+                    red: scale(color.red),
+                    green: scale(color.green),
+                    blue: scale(color.blue),
                 }
             }
         }
